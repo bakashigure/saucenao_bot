@@ -219,5 +219,6 @@ async def saucenao_search(file_path: str):
             ])
             
         if int(results['header']['short_remaining']) < 1:
-            print('Out of searches for this 30 second period. Sleeping for 25 seconds...')
-            time.sleep(25)
+            return json.dumps([
+                {'type': "error", 'message': "Out of searches in 30s. "}
+            ])
