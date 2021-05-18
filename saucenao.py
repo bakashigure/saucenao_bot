@@ -3,7 +3,7 @@
 # Part of https://github.com/bakashigure/aqua_bot
 # Modified from https://saucenao.com/tools/examples/api/identify_images_v1.1.py
 # Created by bakashigure
-# Last updated 2021/4/3
+# Last updated 2021/5/18
 
 
 import asyncio
@@ -16,12 +16,10 @@ import sys
 import time
 import unicodedata
 from collections import OrderedDict
-
-import pixivpy3
 import requests
 from PIL import Image
 
-from .secret import APIKEY
+from secret import APIKEY
 
 
 class Saucenao:
@@ -71,6 +69,9 @@ class Saucenao:
         self.index_madokami = '0'
         self.index_mangadex = '0'
 
+        self.twitter='1' #42
+        self.all='999'
+
         self.db_bitmask = int(self.index_mangadex+self.index_madokami+self.index_pawoo+self.index_da+self.index_portalgraphics+self.index_bcycosplay+self.index_bcyillust+self.index_idolcomplex+self.index_e621+self.index_animepictures+self.index_sankaku+self.index_konachan+self.index_gelbooru+self.index_shows+self.index_movies+self.index_hanime+self.index_anime+self.index_medibang +
                               self.index_2dmarket+self.index_hmisc+self.index_fakku+self.index_shutterstock+self.index_reserved+self.index_animeop+self.index_yandere+self.index_nijie+self.index_drawr+self.index_danbooru+self.index_seigaillust+self.index_anime+self.index_pixivhistorical+self.index_pixiv+self.index_ddbsamples+self.index_ddbobjects+self.index_hcg+self.index_hanime+self.index_hmags, 2)
         print("dbmask="+str(self.db_bitmask))
@@ -84,26 +85,28 @@ class Saucenao:
         imageData = io.BytesIO()
         image.save(imageData, format='PNG')
 
-        url = 'http://saucenao.com/search.php?output_type=2&numres=1&minsim=' + \
-            self.minsim+'&dbmask=' + \
+        url = 'http://saucenao.com/search.php?output_type=2&numres=1&minsim=' + self.minsim+'&dbmask=' + \
             str(self.db_bitmask)+'&api_key='+self.api_key
+
+        url_all='http://saucenao.com/search.php?output_type=2&numres=1&minsim=' + self.minsim+'&db=' + \
+            str(self.all)+'&api_key='+self.api_key
         files = {'file': (file_path, imageData.getvalue())}
         imageData.close()
 
         processResults = True
         while True:
-            r = requests.post(url, files=files)
+            proxy={"https":"http://127.0.0.1:7890"}
+            r = requests.post(url_all, files=files,proxies=proxy)
             if r.status_code != 200:
                 if r.status_code == 403:
-                    return json.dumps([
+                    return json.dumps(
                         {'type': "error", 'message': "Incorrect or Invalid API Key! Please Edit Script to Configure..."}
-                    ])
+                    )
 
                 else:
                     # generally non 200 statuses are due to either overloaded servers or the user is out of searches
                     return json.dumps([
-                        {'type': "error", 'message': "status code: " +
-                            str(r.status_code)}
+                        {'type': "error", 'message': "status code: %s"%str(r.status_code)}
                     ])
             else:
                 results = json.JSONDecoder(
@@ -120,34 +123,36 @@ class Saucenao:
                             # One or more indexes are having an issue.
                             # This search is considered partially successful, even if all indexes failed, so is still counted against your limit.
                             # The error may be transient, but because we don't want to waste searches, allow time for recovery.
-                            return json.dumps([
+                            return json.dumps(
                                 {'type': "error", 'message': "API Error. "}
-                            ])
+                            )
                             # time.sleep(600)
                         else:
                             # Problem with search as submitted, bad image, or impossible request.
                             # Issue is unclear, so don't flood requests.
-                            return json.dumps([
+                            return json.dumps(
                                 {'type': "error",
                                     'message': "Bad image or other request error. "}
-                            ])
+                            )
                 else:
                     # General issue, api did not respond. Normal site took over for this error state.
                     # Issue is unclear, so don't flood requests.
-                    return json.dumps([
+                    return json.dumps(
                         {'type': "error", 'message': "Bad image, or API failure. "}
-                    ])
+                    )
 
         if processResults:
             # print(results)
+            found_json={"type":"success","rate":"{0}%".format(str(results['results'][0]['header']['similarity'])),"data":{}}
 
             if int(results['header']['results_returned']) > 0:
                 artwork_url = ""
+                print(results)
                 # one or more results were returned
                 if float(results['results'][0]['header']['similarity']) > float(results['header']['minimum_similarity']):
                     print('hit! '+str(results['results']
                                       [0]['header']['similarity']))
-
+                    #print(results)
                     # get vars to use
                     service_name = ''
                     illust_id = 0
@@ -162,58 +167,83 @@ class Saucenao:
                     if index_id == 5 or index_id == 6:
                         # 5->pixiv 6->pixiv historical
                         service_name = 'pixiv'
-                        member_id = results['results'][0]['data']['member_id']
+
+                        member_name = results['results'][0]['data']['member_name']
                         illust_id = results['results'][0]['data']['pixiv_id']
+                        title=results['results'][0]['data']['title']
+                        found_json['index']="pixiv"
+                        found_json['data']['pixiv']={"title":title,"illust_id":illust_id,"member_name":member_name}
                         artwork_url = "https://pixiv.net/artworks/{}".format(
                             illust_id)
                         _msg = {
                             "type": "text",
                             "data": {
-                                "text": "找到了! {0}%\nsource: {1}".format(str(results['results'][0]['header']['similarity']), artwork_url)
+                                "text": "Found! {0}%\nsource: {1}".format(str(results['results'][0]['header']['similarity']), artwork_url)
                             }
                         }
-                        return _msg
+                        #print(_msg)
                     elif index_id == 8:
                         # 8->nico nico seiga
                         service_name = 'seiga'
                         member_id = results['results'][0]['data']['member_id']
                         illust_id = results['results'][0]['data']['seiga_id']
+                        found_json['data']['seiga']={"member_id":member_id,"illust_id":illust_id}
                     elif index_id == 10:
                         # 10->drawr
                         service_name = 'drawr'
                         member_id = results['results'][0]['data']['member_id']
                         illust_id = results['results'][0]['data']['drawr_id']
+                        found_json['data']['drawr']={"member_id":member_id,"illust_id":illust_id}
                     elif index_id == 11:
                         # 11->nijie
                         service_name = 'nijie'
                         member_id = results['results'][0]['data']['member_id']
                         illust_id = results['results'][0]['data']['nijie_id']
+                        found_json['data']['nijie']={"member_id":member_id,"illust_id":illust_id}
                     elif index_id == 34:
                         # 34->da
                         service_name = 'da'
                         illust_id = results['results'][0]['data']['da_id']
-                    else:
+                        found_json['data']['da']={"illust_id":illust_id}
+                    elif index_id == 9:
+                        # 9 -> danbooru
+                        # index name, danbooru_id, gelbooru_id, creator, material, characters, sources
+                        found_json['index']="danbooru"
+                        creator=results['results'][0]['data']['creator']
+                        characters=results['results'][0]['data']['characters']
+                        source=results['results'][0]['data']['source']
+                        found_json['data']['danbooru']={"creator":creator,"characters":characters,"source":source}
+                    elif index_id == 38:
+                        # 38 -> H-Misc (E-Hentai)
+                        found_json['index']="H-Misc"
+                        source=results['results'][0]['data']['source']
+                        creator=results['results'][0]['data']['creator']
+                        if type(creator)==list:
+                            creator=(lambda x: ", ".join(x))(creator)
+                        jp_name=results['results'][0]['data']['jp_name']
+                        found_json['data']['H-Misc']={"source":source,"creator":creator,"jp_name":jp_name}
+                    else:    
                         # unknown
                         print('Unhandled Index! Exiting...')
-                        sys.exit(2)
+                    print(found_json)
+                    return json.dumps(found_json)
 
                 else:
-                    return json.dumps([
-                        {'type': "error", 'message': "没找到. {0}% \n请提高最低匹配阈值或换张图".format(str(results['results'][0]['header']['similarity']))}
-                    ])
+                    return json.dumps(
+                        {'type': "warn","rate":"{0}%".format(str(results['results'][0]['header']['similarity'])) ,"message": "Not found ; _ ; please raise the minimum match threshold or choose another image"})
 
 
             else:
-                return json.dumps([
+                return json.dumps(
                     {'type': "error", 'message': "no results...  ;_;"}
-                ])
+                )
 
             if int(results['header']['long_remaining']) < 1:  # could potentially be negative
-                return json.dumps([
+                return json.dumps(
                     {'type': "error", 'message': "Out of searches today. "}
-                ])
+                )
 
             if int(results['header']['short_remaining']) < 1:
-                return json.dumps([
+                return json.dumps(
                     {'type': "error", 'message': "Out of searches in 30s. "}
-                ])
+                )
