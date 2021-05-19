@@ -5,7 +5,7 @@ import saucenao
 
 api=saucenao.Saucenao()
 async def test():
-    a=await api.saucenao_search(r"C:\Users\bakashigure\Desktop\ss.jpg")
+    a=await api.saucenao_search(r"C:\Users\bakashigure\Desktop\www.png")
     a=eval(a)
     if(a['type']=='success'):
         _rate=a['rate']
@@ -13,6 +13,7 @@ async def test():
         _text="Found! %s\n"%_rate
         for k,v in a['data'][_index].items():
             _text+="%s: %s\n"%(k,v)
+        _text=_text.encode('utf-8','replace').decode('utf-8')
         print(_text)
     elif(a['type']=='warn'):
         _rate=a['rate']
