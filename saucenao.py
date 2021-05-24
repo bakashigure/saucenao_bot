@@ -18,15 +18,20 @@ import unicodedata
 from collections import OrderedDict
 import requests
 from PIL import Image
+from utils import APIException
 
 from secret import APIKEY
 
 
 class Saucenao:
-    def __init__(self):
-
-        self.api_key = APIKEY
-        self.minsim = '80!'
+    def __init__(self,api_key,minsim=50):
+        """
+        check usage.py to use
+        """
+        if not api_key:
+            raise APIException("Set api_key first.")
+        self.api_key = api_key
+        self.minsim = '50!'
 
         self.thumbSize = (250, 250)
 
@@ -68,8 +73,9 @@ class Saucenao:
         self.index_pawoo = '0'
         self.index_madokami = '0'
         self.index_mangadex = '0'
-
         self.twitter='1' #42
+
+
         self.all='999'
 
         self.db_bitmask = int(self.index_mangadex+self.index_madokami+self.index_pawoo+self.index_da+self.index_portalgraphics+self.index_bcycosplay+self.index_bcyillust+self.index_idolcomplex+self.index_e621+self.index_animepictures+self.index_sankaku+self.index_konachan+self.index_gelbooru+self.index_shows+self.index_movies+self.index_hanime+self.index_anime+self.index_medibang +
@@ -89,7 +95,7 @@ class Saucenao:
             str(self.db_bitmask)+'&api_key='+self.api_key
 
         url_all='http://saucenao.com/search.php?output_type=2&numres=1&minsim=' + self.minsim+'&db=' + \
-            str(self.all)+'&api_key='+self.api_key
+            str(41)+'&api_key='+self.api_key
         files = {'file': (file_path, imageData.getvalue())}
         imageData.close()
 

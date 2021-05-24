@@ -2,10 +2,11 @@
 import asyncio
 import json
 import saucenao
-
-api=saucenao.Saucenao()
+import secret
+APIKEY=secret.APIKEY
+api=saucenao.Saucenao(APIKEY)
 async def test():
-    a=await api.saucenao_search(r"C:\Users\bakashigure\Desktop\www.png")
+    a=await api.saucenao_search(r"C:\Users\bakashigure\Desktop\tw2.jpg")
     a=eval(a)
     if(a['type']=='success'):
         _rate=a['rate']
