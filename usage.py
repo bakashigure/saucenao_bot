@@ -1,6 +1,5 @@
 #-*- coding:utf-8 -*-
 import asyncio
-import json
 import saucenao
 import secret
 APIKEY=secret.APIKEY
